@@ -227,7 +227,7 @@ def chart_3_clustered_column(df: pd.DataFrame):
         return _empty_figure("3) Clustered Column: High vs Low Counts in Top 4 Genres", "No data")
     top4 = df["track_genre"].value_counts().head(4).index
     subset = df[df["track_genre"].isin(top4) & df["Popularity_Category"].isin(["High", "Low"])]
-    grouped = subset.groupby(["track_genre", "Popularity_Category"], as_index=False).size().rename(columns={"size": "count"})
+    grouped = subset.groupby(["track_genre", "Popularity_Category"], as_index=False, observed=True).size().rename(columns={"size": "count"})
     fig = px.bar(
         grouped,
         x="track_genre",
@@ -268,7 +268,7 @@ def chart_5_stacked_column(df: pd.DataFrame):
         return _empty_figure("5) Stacked Column: Popularity Mix in Top 5 Genres", "No data")
     top5 = df["track_genre"].value_counts().head(5).index
     subset = df[df["track_genre"].isin(top5)]
-    grouped = subset.groupby(["track_genre", "Popularity_Category"], as_index=False).size().rename(columns={"size": "count"})
+    grouped = subset.groupby(["track_genre", "Popularity_Category"], as_index=False, observed=True).size().rename(columns={"size": "count"})
     fig = px.bar(
         grouped,
         x="track_genre",
@@ -290,7 +290,7 @@ def chart_6_stacked_bar(df: pd.DataFrame):
     if not available:
         available = sorted(df["Year"].unique())[-3:]
     subset = df[df["Year"].isin(available)]
-    grouped = subset.groupby(["Year", "Popularity_Category"], as_index=False).size().rename(columns={"size": "count"})
+    grouped = subset.groupby(["Year", "Popularity_Category"], as_index=False, observed=True).size().rename(columns={"size": "count"})
     fig = px.bar(
         grouped,
         x="count",
@@ -410,7 +410,7 @@ def chart_12_line(df: pd.DataFrame):
 def chart_13_area(df: pd.DataFrame):
     if df.empty:
         return _empty_figure("13) Area: Stacked Track Volume by Popularity Category", "No data")
-    grouped = df.groupby(["Year", "Popularity_Category"], as_index=False).size().rename(columns={"size": "count"})
+    grouped = df.groupby(["Year", "Popularity_Category"], as_index=False, observed=True).size().rename(columns={"size": "count"})
     fig = px.area(
         grouped,
         x="Year",
