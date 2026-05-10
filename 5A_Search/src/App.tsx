@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import SearchHome from "./components/SearchHome";
 import ResultsPage from "./components/ResultsPage";
+import AIChat from "./components/AIChat";
 import { sanitizeQuery, secureConsole, getShellCommandCount, incrementShellCommandCount, checkSecurityHeaders } from "./utils/security";
 
-type Page = "home" | "results";
+type Page = "home" | "results" | "assistant";
 
 export default function App() {
   const [page, setPage] = useState<Page>("home");
@@ -11,6 +12,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("all");
   const [isDark, setIsDark] = useState(false);
   const [shellCount, setShellCount] = useState(0);
+  const [assistantPrompt, setAssistantPrompt] = useState("");
 
   // Load preferences
   useEffect(() => {
@@ -38,8 +40,13 @@ export default function App() {
   // Handle URL params for bookmarkability
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const q = params.get("q");
-    if (q) {
+    const q = params.get("q") || params.get("search") || "";
+    const assistant = params.get("assistant");
+    if (assistant === "1" || assistant === "true") {
+      setAssistantPrompt(q);
+      setPage("assistant");
+      document.title = "5*A Assistant";
+    } else if (q) {
       setQuery(q);
       setPage("results");
     }
@@ -67,6 +74,7 @@ export default function App() {
   const handleGoHome = useCallback(() => {
     setPage("home");
     setQuery("");
+    setAssistantPrompt("");
     setActiveTab("all");
     window.history.pushState({}, "", "/");
     document.title = "5*A — Search Engine";
@@ -79,6 +87,13 @@ export default function App() {
   const handleToggleDark = useCallback((dark: boolean) => {
     setIsDark(dark);
   }, []);
+
+  const handleOpenAssistant = useCallback(() => {
+    setAssistantPrompt(query || "");
+    setPage("assistant");
+    window.history.pushState({}, "", query ? `?assistant=1&q=${encodeURIComponent(query)}` : "?assistant=1");
+    document.title = "5*A Assistant";
+  }, [query]);
 
   return (
     <div
@@ -93,6 +108,28 @@ export default function App() {
           onToggleDark={handleToggleDark}
           shellCount={shellCount}
         />
+      ) : page === "assistant" ? (
+        <div className="min-h-screen px-4 py-6">
+          <div className="mx-auto mb-6 flex max-w-5xl items-center justify-between gap-4">
+            <button
+              onClick={handleGoHome}
+              className={`border px-4 py-2 text-xs font-medium uppercase tracking-[0.15em] transition-colors ${
+                isDark ? "border-[#333] text-[#aaa] hover:border-white hover:text-white" : "border-[#111] text-[#111] hover:bg-[#111] hover:text-white"
+              }`}
+            >
+              Back to Search
+            </button>
+            <button
+              onClick={() => handleToggleDark(!isDark)}
+              className={`border px-4 py-2 text-xs font-medium uppercase tracking-[0.15em] transition-colors ${
+                isDark ? "border-[#333] text-[#aaa] hover:border-white hover:text-white" : "border-[#111] text-[#111] hover:bg-[#111] hover:text-white"
+              }`}
+            >
+              {isDark ? "Light" : "Dark"}
+            </button>
+          </div>
+          <AIChat isDark={isDark} initialPrompt={assistantPrompt} />
+        </div>
       ) : (
         <ResultsPage
           query={query}
@@ -103,6 +140,16 @@ export default function App() {
           isDark={isDark}
           onToggleDark={handleToggleDark}
         />
+      )}
+      {page !== "assistant" && (
+        <button
+          onClick={handleOpenAssistant}
+          className={`fixed bottom-5 right-5 z-50 border px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] shadow-lg transition-colors ${
+            isDark ? "border-white bg-white text-black hover:bg-[#ddd]" : "border-[#111] bg-[#111] text-white hover:bg-[#333]"
+          }`}
+        >
+          5*A Assistant
+        </button>
       )}
     </div>
   );

@@ -102,9 +102,10 @@ const HF_ROUTER_URL = "https://router.huggingface.co/v1/chat/completions";
 
 interface Props {
   isDark: boolean;
+  initialPrompt?: string;
 }
 
-export default function AIChat({ isDark }: Props) {
+export default function AIChat({ isDark, initialPrompt }: Props) {
   const [webGPUSupported, setWebGPUSupported] = useState<boolean | null>(null);
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -127,6 +128,12 @@ export default function AIChat({ isDark }: Props) {
     // Default to first HF model
     setSelectedModel(MODELS[0].id);
   }, []);
+
+  useEffect(() => {
+    if (initialPrompt && !input.trim() && messages.length === 0) {
+      setInput(initialPrompt);
+    }
+  }, [initialPrompt, input, messages.length]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
