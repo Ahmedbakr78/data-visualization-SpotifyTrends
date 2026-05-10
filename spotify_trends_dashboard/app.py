@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
+from urllib.parse import quote_plus
 
 import pandas as pd
 import plotly.express as px
@@ -14,17 +15,58 @@ DATA_CANDIDATES = [
     ROOT_DIR / "dataset_5a" / "spotify_cleaned.csv",
 ]
 
-ACCENT_PRIMARY = "#14B8A6"
-ACCENT_SECONDARY = "#F97316"
-ACCENT_SOFT = "#38BDF8"
-BG_COLOR = "#070B14"
-CARD_COLOR = "rgba(15, 23, 42, 0.7)"
-INPUT_BG = "#0B1326"
-TEXT_COLOR = "#E5E7EB"
-MUTED_TEXT = "#94A3B8"
-GRID_COLOR = "rgba(148, 163, 184, 0.18)"
-SPOTIFY_GREEN = ACCENT_PRIMARY
-SPOTIFY_PURPLE = ACCENT_SECONDARY
+ACCENT_PRIMARY = "#111111"
+ACCENT_SECONDARY = "#3A3A3A"
+ACCENT_SOFT = "#6A6A6A"
+BG_COLOR = "#F7F6F2"
+CARD_COLOR = "#FFFFFF"
+INPUT_BG = "#FFFFFF"
+TEXT_COLOR = "#111111"
+MUTED_TEXT = "#6F6F6F"
+GRID_COLOR = "#E5E2DC"
+BORDER_COLOR = "#D8D4CC"
+ROW_ALT = "#F2F0EB"
+
+CATEGORY_COLORS = {"Low": "#64748B", "Medium": "#F59E0B", "High": "#10B981"}
+FEATURE_COLORS = {"danceability": "#2563EB", "energy": "#EF4444"}
+GENRE_SEQUENCE = ["#111111", "#2563EB", "#EF4444", "#10B981", "#F59E0B", "#7C3AED", "#0891B2", "#DB2777"]
+HEATMAP_SCALE = ["#7C2D12", "#F7F6F2", "#064E3B"]
+BUTTON_STYLE = {
+    "background": "#111111",
+    "color": "#FFFFFF",
+    "border": "1px solid #111111",
+    "fontWeight": "700",
+    "padding": "11px 16px",
+    "borderRadius": "0",
+    "cursor": "pointer",
+    "letterSpacing": "0",
+}
+SECONDARY_BUTTON_STYLE = {
+    "background": "#FFFFFF",
+    "color": "#111111",
+    "border": "1px solid #111111",
+    "fontWeight": "700",
+    "padding": "11px 16px",
+    "borderRadius": "0",
+    "cursor": "pointer",
+    "letterSpacing": "0",
+    "textDecoration": "none",
+    "display": "inline-block",
+}
+PANEL_STYLE = {
+    "background": CARD_COLOR,
+    "border": f"1px solid {BORDER_COLOR}",
+    "borderRadius": "0",
+    "padding": "16px",
+}
+SECTION_TITLE_STYLE = {
+    "color": TEXT_COLOR,
+    "fontWeight": "700",
+    "fontSize": "18px",
+    "letterSpacing": "0",
+    "margin": "20px 0 10px",
+    "textTransform": "uppercase",
+}
 
 CATEGORY_ORDER = ["Low", "Medium", "High"]
 LABELS = {
@@ -41,6 +83,9 @@ LABELS = {
     "duration_min": "Duration (minutes)",
     "Year": "Year",
     "count": "Tracks Count",
+    "percent": "Share of Tracks (%)",
+    "metric": "Audio Feature",
+    "value": "Average Score",
 }
 
 
@@ -128,6 +173,7 @@ def _load_data() -> pd.DataFrame:
     df["valence"] = df["valence"].clip(0, 1)
     df["acousticness"] = df["acousticness"].clip(0, 1)
     df["duration_ms"] = df["duration_ms"].clip(30000, 900000)
+    df["duration_min"] = (df["duration_ms"] / 60000).round(2)
     df["Year"] = df["Year"].round().astype(int)
     df = df[df["Year"].between(1900, 2035)]
 
@@ -142,27 +188,48 @@ def _load_data() -> pd.DataFrame:
 
 def _style(fig, title: str):
     fig.update_layout(
-        title={"text": title, "x": 0.01, "font": {"size": 17, "color": TEXT_COLOR}},
+        title={"text": title, "x": 0.01, "font": {"size": 18, "color": TEXT_COLOR, "family": "Cormorant Garamond, Georgia, serif"}},
         paper_bgcolor=CARD_COLOR,
         plot_bgcolor=CARD_COLOR,
-        font={"color": TEXT_COLOR, "family": "Space Grotesk, Manrope, Segoe UI, sans-serif"},
+        colorway=GENRE_SEQUENCE,
+        font={"color": TEXT_COLOR, "family": "Inter, Manrope, Segoe UI, sans-serif"},
         margin={"l": 45, "r": 18, "t": 68, "b": 40},
-        legend={"orientation": "h", "y": 1.04, "x": 0.0, "font": {"size": 11, "color": MUTED_TEXT}},
-        hoverlabel={"bgcolor": "#0B1326", "font": {"color": TEXT_COLOR}},
-        hovermode="x unified",
+        legend={
+            "orientation": "h",
+            "y": 1.05,
+            "x": 0.0,
+            "font": {"size": 11, "color": MUTED_TEXT},
+            "bgcolor": "rgba(255,255,255,0)",
+        },
+        hoverlabel={"bgcolor": "#111111", "bordercolor": "#111111", "font": {"color": "#FFFFFF"}},
+        hovermode="closest",
     )
-    fig.update_xaxes(gridcolor=GRID_COLOR, zeroline=False)
-    fig.update_yaxes(gridcolor=GRID_COLOR, zeroline=False)
+    fig.update_xaxes(
+        gridcolor=GRID_COLOR,
+        zeroline=False,
+        linecolor=TEXT_COLOR,
+        tickcolor=TEXT_COLOR,
+        ticks="outside",
+        title_font={"color": TEXT_COLOR},
+    )
+    fig.update_yaxes(
+        gridcolor=GRID_COLOR,
+        zeroline=False,
+        linecolor=TEXT_COLOR,
+        tickcolor=TEXT_COLOR,
+        ticks="outside",
+        title_font={"color": TEXT_COLOR},
+    )
     return fig
 
 
 def _empty_figure(title: str, message: str):
     fig = px.scatter()
     fig.update_layout(
-        title={"text": title, "x": 0.01, "font": {"size": 17, "color": TEXT_COLOR}},
+        title={"text": title, "x": 0.01, "font": {"size": 18, "color": TEXT_COLOR, "family": "Cormorant Garamond, Georgia, serif"}},
         paper_bgcolor=CARD_COLOR,
         plot_bgcolor=CARD_COLOR,
-        font={"color": TEXT_COLOR, "family": "Space Grotesk, Manrope, Segoe UI, sans-serif"},
+        font={"color": TEXT_COLOR, "family": "Inter, Manrope, Segoe UI, sans-serif"},
         margin={"l": 45, "r": 18, "t": 68, "b": 40},
     )
     fig.add_annotation(text=message, x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False, font={"size": 15, "color": MUTED_TEXT})
@@ -204,12 +271,46 @@ def _kpis(df: pd.DataFrame) -> tuple[str, str, str, str, str, str]:
     return tracks, avg_pop, top_genre, top_artist, years, insight
 
 
+def _assistant_prompt(df: pd.DataFrame, genre: str, year_range: list[int], scope: str, query: str | None) -> tuple[str, str]:
+    if df.empty:
+        prompt = "Spotify tracks analysis: explain why the current dashboard filters return no matching tracks."
+        return prompt, f"http://127.0.0.1:5173/?assistant=1&q={quote_plus(prompt)}"
+
+    top_genre = df.groupby("track_genre")["popularity"].mean().sort_values(ascending=False).index[0]
+    top_artist = df["artists"].value_counts().index[0]
+    filters = [
+        f"years {int(year_range[0])}-{int(year_range[1])}",
+        f"genre {genre}" if genre != "All" else "all genres",
+        f"{scope} popularity" if scope != "All" else "all popularity tiers",
+    ]
+    if query and query.strip():
+        filters.append(f"search text {query.strip()}")
+
+    prompt = (
+        "Spotify dashboard assistant: explain the current filtered view "
+        f"({', '.join(filters)}). "
+        f"The view has {len(df):,} tracks, average popularity {df['popularity'].mean():.1f}, "
+        f"top genre {top_genre}, top artist {top_artist}, median tempo {df['tempo'].median():.1f} BPM. "
+        "Give 5 short insights and 3 presentation talking points."
+    )
+    return prompt, f"http://127.0.0.1:5173/?assistant=1&q={quote_plus(prompt)}"
+
+
 def chart_1_top5_genres(df: pd.DataFrame):
     if df.empty:
         return _empty_figure("1) Column: Avg Popularity for Top 5 Genres", "No data")
     agg = df.groupby("track_genre", as_index=False)["popularity"].mean().sort_values("popularity", ascending=False).head(5)
-    fig = px.bar(agg, x="track_genre", y="popularity", color="track_genre", color_discrete_sequence=px.colors.sequential.Greens, labels=LABELS)
-    fig.update_traces(showlegend=False)
+    fig = px.bar(
+        agg,
+        x="track_genre",
+        y="popularity",
+        color="track_genre",
+        text="popularity",
+        color_discrete_sequence=GENRE_SEQUENCE,
+        labels=LABELS,
+    )
+    fig.update_traces(showlegend=False, texttemplate="%{text:.1f}", textposition="outside", marker_line_color="#111111", marker_line_width=0.8)
+    fig.update_yaxes(range=[0, min(100, max(20, agg["popularity"].max() * 1.18))])
     return _style(fig, "1) Column: Avg Popularity for Top 5 Genres")
 
 
@@ -217,8 +318,18 @@ def chart_2_bottom5_genres(df: pd.DataFrame):
     if df.empty:
         return _empty_figure("2) Bar: Avg Popularity for Bottom 5 Genres", "No data")
     agg = df.groupby("track_genre", as_index=False)["popularity"].mean().sort_values("popularity", ascending=True).head(5)
-    fig = px.bar(agg, x="popularity", y="track_genre", orientation="h", color="track_genre", color_discrete_sequence=px.colors.sequential.Purples, labels=LABELS)
-    fig.update_traces(showlegend=False)
+    fig = px.bar(
+        agg,
+        x="popularity",
+        y="track_genre",
+        orientation="h",
+        color="track_genre",
+        text="popularity",
+        color_discrete_sequence=list(reversed(GENRE_SEQUENCE)),
+        labels=LABELS,
+    )
+    fig.update_traces(showlegend=False, texttemplate="%{text:.1f}", textposition="outside", marker_line_color="#111111", marker_line_width=0.8)
+    fig.update_yaxes(categoryorder="total ascending")
     return _style(fig, "2) Bar: Avg Popularity for Bottom 5 Genres")
 
 
@@ -234,9 +345,10 @@ def chart_3_clustered_column(df: pd.DataFrame):
         y="count",
         color="Popularity_Category",
         barmode="group",
-        color_discrete_map={"High": SPOTIFY_GREEN, "Low": SPOTIFY_PURPLE},
+        color_discrete_map=CATEGORY_COLORS,
         labels=LABELS,
     )
+    fig.update_traces(marker_line_color="#111111", marker_line_width=0.7)
     return _style(fig, "3) Clustered Column: High vs Low Counts in Top 4 Genres")
 
 
@@ -257,9 +369,10 @@ def chart_4_clustered_bar(df: pd.DataFrame):
         color="metric",
         orientation="h",
         barmode="group",
-        color_discrete_map={"danceability": SPOTIFY_GREEN, "energy": SPOTIFY_PURPLE},
+        color_discrete_map=FEATURE_COLORS,
         labels=LABELS,
     )
+    fig.update_traces(marker_line_color="#111111", marker_line_width=0.7)
     return _style(fig, "4) Clustered Bar: Avg Danceability vs Energy for Top 5 Artists")
 
 
@@ -269,55 +382,73 @@ def chart_5_stacked_column(df: pd.DataFrame):
     top5 = df["track_genre"].value_counts().head(5).index
     subset = df[df["track_genre"].isin(top5)]
     grouped = subset.groupby(["track_genre", "Popularity_Category"], as_index=False, observed=True).size().rename(columns={"size": "count"})
+    grouped["percent"] = grouped["count"] / grouped.groupby("track_genre")["count"].transform("sum") * 100
     fig = px.bar(
         grouped,
         x="track_genre",
-        y="count",
+        y="percent",
         color="Popularity_Category",
         barmode="stack",
         category_orders={"Popularity_Category": CATEGORY_ORDER},
-        color_discrete_map={"Low": SPOTIFY_PURPLE, "Medium": "#64748B", "High": SPOTIFY_GREEN},
+        color_discrete_map=CATEGORY_COLORS,
+        custom_data=["count"],
         labels=LABELS,
     )
-    return _style(fig, "5) Stacked Column: Popularity Mix in Top 5 Genres")
+    fig.update_traces(marker_line_color="#FFFFFF", marker_line_width=0.8, hovertemplate="%{x}<br>%{legendgroup}: %{y:.1f}%<br>Tracks: %{customdata[0]:,}<extra></extra>")
+    return _style(fig, "5) Stacked Column: Popularity Mix in Top 5 Genres (%)")
 
 
 def chart_6_stacked_bar(df: pd.DataFrame):
     if df.empty:
         return _empty_figure("6) Stacked Bar: Popularity Mix Across Years", "No data")
-    focus_years = [2020, 2021, 2022]
-    available = [y for y in focus_years if y in df["Year"].unique()]
-    if not available:
-        available = sorted(df["Year"].unique())[-3:]
+    available = sorted(df["Year"].dropna().astype(int).unique())[-5:]
     subset = df[df["Year"].isin(available)]
     grouped = subset.groupby(["Year", "Popularity_Category"], as_index=False, observed=True).size().rename(columns={"size": "count"})
+    grouped["Year"] = grouped["Year"].astype(str)
+    grouped["percent"] = grouped["count"] / grouped.groupby("Year")["count"].transform("sum") * 100
     fig = px.bar(
         grouped,
-        x="count",
+        x="percent",
         y="Year",
         color="Popularity_Category",
         orientation="h",
         barmode="stack",
-        category_orders={"Popularity_Category": CATEGORY_ORDER},
-        color_discrete_map={"Low": SPOTIFY_PURPLE, "Medium": "#64748B", "High": SPOTIFY_GREEN},
+        category_orders={"Popularity_Category": CATEGORY_ORDER, "Year": [str(y) for y in available]},
+        color_discrete_map=CATEGORY_COLORS,
+        custom_data=["count"],
         labels=LABELS,
     )
-    return _style(fig, "6) Stacked Bar: Popularity Mix Across Years")
+    fig.update_traces(marker_line_color="#FFFFFF", marker_line_width=0.8, hovertemplate="%{y}<br>%{legendgroup}: %{x:.1f}%<br>Tracks: %{customdata[0]:,}<extra></extra>")
+    return _style(fig, "6) Stacked Bar: Popularity Mix Across Latest Years (%)")
 
 
 def chart_7_scatter(df: pd.DataFrame):
     if df.empty:
         return _empty_figure("7) Scatter: Energy vs Valence by Popularity Category", "No data")
+    plot_df = df.sample(n=min(len(df), 7000), random_state=42) if len(df) > 7000 else df
+    corr = plot_df[["energy", "valence"]].corr(numeric_only=True).iloc[0, 1]
     fig = px.scatter(
-        df,
+        plot_df,
         x="energy",
         y="valence",
         color="Popularity_Category",
-        opacity=0.65,
-        color_discrete_map={"Low": SPOTIFY_PURPLE, "Medium": "#64748B", "High": SPOTIFY_GREEN},
+        opacity=0.58,
+        color_discrete_map=CATEGORY_COLORS,
         hover_data=["track_name", "artists", "track_genre", "popularity"],
         render_mode="webgl",
         labels=LABELS,
+    )
+    fig.update_traces(marker={"line": {"width": 0.25, "color": "#FFFFFF"}})
+    fig.add_annotation(
+        text=f"r = {corr:.2f}",
+        x=0.02,
+        y=0.98,
+        xref="paper",
+        yref="paper",
+        showarrow=False,
+        bgcolor="#FFFFFF",
+        bordercolor=BORDER_COLOR,
+        font={"color": TEXT_COLOR, "size": 12},
     )
     return _style(fig, "7) Scatter: Energy vs Valence by Popularity Category")
 
@@ -332,7 +463,8 @@ def chart_8_bubble(df: pd.DataFrame):
         selected = df["track_genre"].value_counts().head(3).index.tolist()
 
     subset = df[df["track_genre"].isin(selected)].copy()
-    subset["duration_min"] = (subset["duration_ms"] / 60000).clip(0.8, 10)
+    subset = subset.sample(n=min(len(subset), 5000), random_state=42) if len(subset) > 5000 else subset
+    subset["duration_min"] = subset["duration_min"].clip(0.8, 10)
     fig = px.scatter(
         subset,
         x="danceability",
@@ -340,11 +472,12 @@ def chart_8_bubble(df: pd.DataFrame):
         size="duration_min",
         size_max=45,
         color="track_genre",
-        opacity=0.65,
+        opacity=0.58,
         hover_data=["track_name", "artists", "duration_min"],
-        color_discrete_sequence=px.colors.qualitative.Set2,
+        color_discrete_sequence=GENRE_SEQUENCE,
         labels=LABELS,
     )
+    fig.update_traces(marker={"line": {"width": 0.5, "color": "#FFFFFF"}})
     return _style(fig, "8) Bubble: Danceability vs Popularity (Size = Duration, Color = Genre)")
 
 
@@ -357,10 +490,18 @@ def chart_9_histogram(df: pd.DataFrame):
         nbins=40,
         color="Popularity_Category",
         barmode="overlay",
-        opacity=0.6,
+        opacity=0.62,
         category_orders={"Popularity_Category": CATEGORY_ORDER},
-        color_discrete_map={"Low": SPOTIFY_PURPLE, "Medium": "#64748B", "High": SPOTIFY_GREEN},
+        color_discrete_map=CATEGORY_COLORS,
         labels=LABELS,
+    )
+    median_tempo = df["tempo"].median()
+    fig.add_vline(
+        x=median_tempo,
+        line_color="#111111",
+        line_width=2,
+        annotation_text=f"Median {median_tempo:.1f}",
+        annotation_position="top right",
     )
     return _style(fig, "9) Histogram: Tempo Distribution")
 
@@ -375,9 +516,10 @@ def chart_10_box(df: pd.DataFrame):
         color="Popularity_Category",
         points="outliers",
         category_orders={"Popularity_Category": CATEGORY_ORDER},
-        color_discrete_map={"Low": SPOTIFY_PURPLE, "Medium": "#64748B", "High": SPOTIFY_GREEN},
+        color_discrete_map=CATEGORY_COLORS,
         labels=LABELS,
     )
+    fig.update_traces(boxmean=True, marker_line_color="#111111")
     return _style(fig, "10) Box: Loudness by Popularity Category")
 
 
@@ -392,9 +534,10 @@ def chart_11_violin(df: pd.DataFrame):
         box=True,
         points=False,
         category_orders={"Popularity_Category": CATEGORY_ORDER},
-        color_discrete_map={"Low": SPOTIFY_PURPLE, "Medium": "#64748B", "High": SPOTIFY_GREEN},
+        color_discrete_map=CATEGORY_COLORS,
         labels=LABELS,
     )
+    fig.update_traces(meanline_visible=True, line_color="#111111")
     return _style(fig, "11) Violin: Acousticness by Popularity Category")
 
 
@@ -402,8 +545,19 @@ def chart_12_line(df: pd.DataFrame):
     if df.empty:
         return _empty_figure("12) Line: Average Popularity by Year", "No data")
     grouped = df.groupby("Year", as_index=False)["popularity"].mean().sort_values("Year")
-    fig = px.line(grouped, x="Year", y="popularity", markers=True, labels=LABELS)
-    fig.update_traces(line={"color": SPOTIFY_GREEN, "width": 3}, marker={"size": 8, "color": SPOTIFY_PURPLE})
+    grouped["Rolling 3-Year Avg"] = grouped["popularity"].rolling(3, min_periods=1).mean()
+    line_df = grouped.melt(id_vars="Year", value_vars=["popularity", "Rolling 3-Year Avg"], var_name="metric", value_name="value")
+    line_df["metric"] = line_df["metric"].replace({"popularity": "Average Popularity"})
+    fig = px.line(
+        line_df,
+        x="Year",
+        y="value",
+        color="metric",
+        markers=True,
+        color_discrete_map={"Average Popularity": "#111111", "Rolling 3-Year Avg": "#8A8A8A"},
+        labels={**LABELS, "value": "Average Popularity", "metric": "Measure"},
+    )
+    fig.update_traces(line={"width": 3}, marker={"size": 7})
     return _style(fig, "12) Line: Average Popularity by Year")
 
 
@@ -417,7 +571,7 @@ def chart_13_area(df: pd.DataFrame):
         y="count",
         color="Popularity_Category",
         category_orders={"Popularity_Category": CATEGORY_ORDER},
-        color_discrete_map={"Low": SPOTIFY_PURPLE, "Medium": "#64748B", "High": SPOTIFY_GREEN},
+        color_discrete_map=CATEGORY_COLORS,
         labels=LABELS,
     )
     return _style(fig, "13) Area: Stacked Track Volume by Popularity Category")
@@ -433,7 +587,7 @@ def chart_14_heatmap(df: pd.DataFrame):
         text_auto=True,
         zmin=-1,
         zmax=1,
-        color_continuous_scale=["#2e1065", "#0f172a", "#0f766e", "#22c55e"],
+        color_continuous_scale=HEATMAP_SCALE,
         labels={"color": "Correlation"},
     )
     fig.update_layout(coloraxis_colorbar={"title": "Corr"})
@@ -442,14 +596,16 @@ def chart_14_heatmap(df: pd.DataFrame):
 
 def _card(graph_id: str, fig):
     return html.Div(
-        dcc.Graph(id=graph_id, figure=fig, config={"displaylogo": False}),
+        dcc.Loading(
+            dcc.Graph(id=graph_id, figure=fig, config={"displaylogo": False, "toImageButtonOptions": {"format": "png", "scale": 2}}),
+            type="default",
+            color=TEXT_COLOR,
+        ),
         style={
             "background": CARD_COLOR,
-            "border": "1px solid rgba(56, 189, 248, 0.22)",
-            "borderRadius": "16px",
-            "backdropFilter": "blur(8px)",
+            "border": f"1px solid {BORDER_COLOR}",
+            "borderRadius": "0",
             "padding": "6px",
-            "boxShadow": "0 18px 40px rgba(15, 23, 42, 0.28)",
         },
     )
 
@@ -467,6 +623,56 @@ def _top_tracks(df: pd.DataFrame) -> list[dict[str, str | int | float]]:
     top["danceability"] = top["danceability"].round(3)
     top["energy"] = top["energy"].round(3)
     return top.to_dict("records")
+
+
+def _kpi_card(label: str, value_id: str):
+    return html.Div(
+        [
+            html.Div(label, style={"color": MUTED_TEXT, "fontSize": "12px", "fontWeight": "700", "textTransform": "uppercase"}),
+            html.Div(id=value_id, style={"fontSize": "28px", "fontWeight": "700", "color": TEXT_COLOR, "marginTop": "8px"}),
+        ],
+        style=PANEL_STYLE,
+    )
+
+
+def _assistant_card():
+    return html.Div(
+        style={
+            **PANEL_STYLE,
+            "display": "grid",
+            "gridTemplateColumns": "minmax(0, 1fr) auto",
+            "gap": "14px",
+            "alignItems": "center",
+            "marginBottom": "18px",
+            "borderLeft": "6px solid #2563EB",
+        },
+        children=[
+            html.Div(
+                [
+                    html.Div(
+                        "5*A Assistant",
+                        style={
+                            "fontFamily": "Cormorant Garamond, Georgia, serif",
+                            "fontSize": "28px",
+                            "fontWeight": "700",
+                            "lineHeight": "1",
+                        },
+                    ),
+                    html.Div(
+                        id="assistant-prompt",
+                        style={"color": MUTED_TEXT, "fontSize": "14px", "lineHeight": "1.55", "marginTop": "8px"},
+                    ),
+                ]
+            ),
+            html.A(
+                "Open Assistant",
+                id="assistant-open-link",
+                href="http://127.0.0.1:5173",
+                target="_blank",
+                style=SECONDARY_BUTTON_STYLE,
+            ),
+        ],
+    )
 
 
 DATA = _load_data()
@@ -492,7 +698,8 @@ def _year_marks(start: int, end: int):
 
 
 app = Dash(__name__)
-app.title = "5*A"
+server = app.server
+app.title = "Spotify Music Trends"
 app.index_string = """
 <!DOCTYPE html>
 <html>
@@ -503,38 +710,46 @@ app.index_string = """
         {%css%}
         <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">
         <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>
-        <link href=\"https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Space+Grotesk:wght@500;700&display=swap\" rel=\"stylesheet\">
+        <link href=\"https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap\" rel=\"stylesheet\">
         <style>
+            :root {
+                color-scheme: light;
+            }
             body {
                 margin: 0;
-                background:
-                    radial-gradient(900px 460px at 15% -20%, rgba(20, 184, 166, 0.18), transparent 65%),
-                    radial-gradient(820px 420px at 110% 10%, rgba(249, 115, 22, 0.18), transparent 60%),
-                    linear-gradient(145deg, #040712 0%, #091126 45%, #111827 100%);
+                background: #F7F6F2;
+                color: #111111;
             }
             * {
-                font-family: 'Manrope', 'Space Grotesk', 'Segoe UI', sans-serif;
+                box-sizing: border-box;
+                font-family: 'Inter', 'Segoe UI', sans-serif;
+                letter-spacing: 0;
+            }
+            button,
+            input,
+            .Select-control {
+                border-radius: 0 !important;
             }
             .rc-slider-mark-text {
-                color: #94A3B8 !important;
+                color: #6F6F6F !important;
                 font-size: 12px;
             }
             .rc-slider-mark-text-active {
-                color: #E5E7EB !important;
+                color: #111111 !important;
             }
             .rc-slider-mark {
                 margin-top: 2px;
             }
             .rc-slider-track {
-                background-color: #14B8A6;
+                background-color: #111111;
             }
             .rc-slider-rail {
-                background-color: rgba(148, 163, 184, 0.35);
+                background-color: #D8D4CC;
             }
             .rc-slider-handle {
-                border: 2px solid #22D3EE;
-                background-color: #0B1326;
-                box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.22);
+                border: 2px solid #111111;
+                background-color: #FFFFFF;
+                box-shadow: none;
             }
             .Select-control,
             .Select-menu-outer,
@@ -542,60 +757,59 @@ app.index_string = """
             .Select-value-label,
             .Select-placeholder,
             .Select input {
-                background-color: #0B1326 !important;
-                color: #E5E7EB !important;
-                border-color: rgba(56, 189, 248, 0.25) !important;
+                background-color: #FFFFFF !important;
+                color: #111111 !important;
+                border-color: #D8D4CC !important;
             }
             .control-dropdown .Select-control {
-                background-color: #0B1326 !important;
-                border: 1px solid rgba(56, 189, 248, 0.35) !important;
-                border-radius: 10px !important;
+                background-color: #FFFFFF !important;
+                border: 1px solid #111111 !important;
                 min-height: 48px !important;
                 padding: 4px 8px !important;
             }
             .control-dropdown .Select-input > input::placeholder {
-                color: #94A3B8 !important;
+                color: #6F6F6F !important;
                 font-size: 14px !important;
             }
             .control-dropdown .Select-input > input {
                 padding: 6px 8px !important;
                 font-size: 14px !important;
-                color: #E5E7EB !important;
+                color: #111111 !important;
             }
             .control-dropdown .Select-menu-outer,
             .control-dropdown .Select-menu {
-                background-color: #0B1326 !important;
-                border: 1px solid rgba(56, 189, 248, 0.35) !important;
+                background-color: #FFFFFF !important;
+                border: 1px solid #111111 !important;
                 z-index: 2200 !important;
                 max-height: 250px !important;
             }
             .control-dropdown .VirtualizedSelectOption,
             .control-dropdown .Select-option {
-                background-color: #0B1326 !important;
-                color: #E5E7EB !important;
+                background-color: #FFFFFF !important;
+                color: #111111 !important;
                 padding: 10px 12px !important;
                 font-size: 14px !important;
             }
             .control-dropdown .VirtualizedSelectFocusedOption,
             .control-dropdown .Select-option.is-focused {
-                background-color: #13223d !important;
-                color: #ffffff !important;
+                background-color: #111111 !important;
+                color: #FFFFFF !important;
             }
             .control-dropdown .Select-value-label,
             .control-dropdown .Select-placeholder,
             .control-dropdown .Select-input > input {
-                color: #E5E7EB !important;
+                color: #111111 !important;
                 font-size: 14px !important;
             }
             .control-dropdown .Select-value,
             .control-dropdown .Select-value span,
             .control-dropdown .Select-arrow-zone,
             .control-dropdown .Select-clear-zone {
-                background-color: #0B1326 !important;
-                color: #E5E7EB !important;
+                background-color: #FFFFFF !important;
+                color: #111111 !important;
             }
             .control-radio label {
-                color: #E5E7EB !important;
+                color: #111111 !important;
                 font-weight: 600 !important;
                 display: inline-flex !important;
                 align-items: center !important;
@@ -603,11 +817,17 @@ app.index_string = """
                 margin-right: 14px !important;
             }
             .control-radio input[type="radio"] {
-                accent-color: #14B8A6;
+                accent-color: #111111;
             }
             input[type="text"]::placeholder {
-                color: #94A3B8 !important;
+                color: #6F6F6F !important;
                 opacity: 1;
+            }
+            input[type="text"]:focus,
+            button:focus,
+            .Select-control:focus-within {
+                outline: 2px solid #111111;
+                outline-offset: 2px;
             }
             @media (max-width: 1200px) {
                 #control-grid {
@@ -634,223 +854,226 @@ app.index_string = """
 """
 
 app.layout = html.Div(
-        style={"backgroundColor": "transparent", "minHeight": "100vh", "padding": "22px", "color": TEXT_COLOR},
+    style={"backgroundColor": BG_COLOR, "minHeight": "100vh", "padding": "26px", "color": TEXT_COLOR},
     children=[
-        html.H1(
-                        "5*A",
-                        style={"textAlign": "center", "marginBottom": "6px", "color": TEXT_COLOR, "fontWeight": "800", "letterSpacing": "0.3px", "fontSize": "2.2rem"},
-        ),
-                html.Div(
-                        "Clean multi-year analytics for popularity, behavior, and genre patterns",
-                        style={"textAlign": "center", "marginBottom": "16px", "color": MUTED_TEXT, "fontSize": "1rem"},
-                ),
         html.Div(
-            id="control-grid",
-            style={
-                "display": "grid",
-                "gridTemplateColumns": "repeat(auto-fit, minmax(280px, 1fr))",
-                                "gap": "16px",
-                "background": CARD_COLOR,
-                                "padding": "18px",
-                                "border": "1px solid rgba(56, 189, 248, 0.22)",
-                                "borderRadius": "16px",
-                                "backdropFilter": "blur(8px)",
-                                "marginBottom": "18px",
-            },
+            style={"maxWidth": "1720px", "margin": "0 auto"},
             children=[
-                html.Div(
+                html.Header(
+                    style={"borderBottom": f"1px solid {TEXT_COLOR}", "paddingBottom": "20px", "marginBottom": "18px"},
                     children=[
-                                                html.Label("Genre", style={"color": ACCENT_SOFT, "fontWeight": "700", "marginBottom": "6px", "display": "block"}),
-                        dcc.Dropdown(
-                            id="genre-dropdown",
-                            className="control-dropdown",
-                            options=[{"label": "All", "value": "All"}] + [{"label": g, "value": g} for g in ALL_GENRES],
-                            value="All",
-                            clearable=False,
-                            maxHeight=180,
+                        html.Div(
+                            "Spotify Music Trends",
                             style={
-                                "color": TEXT_COLOR,
-                                "fontWeight": "600",
-                                "backgroundColor": INPUT_BG,
-                                "borderRadius": "10px",
+                                "fontFamily": "Cormorant Garamond, Georgia, serif",
+                                "fontSize": "clamp(42px, 7vw, 94px)",
+                                "lineHeight": "0.92",
+                                "fontWeight": "700",
+                                "textTransform": "uppercase",
                             },
                         ),
-                    ]
+                        html.Div(
+                            "Popularity, audio features, genre behavior, and release-year movement across 113k cleaned Spotify tracks.",
+                            style={"color": MUTED_TEXT, "fontSize": "15px", "marginTop": "12px", "maxWidth": "760px"},
+                        ),
+                    ],
                 ),
                 html.Div(
-                    children=[
-                                                html.Label("Year Range", style={"color": ACCENT_SOFT, "fontWeight": "700", "marginBottom": "6px", "display": "block"}),
-                        dcc.RangeSlider(
-                            id="year-slider",
-                            min=slider_min,
-                            max=slider_max,
-                            value=[YEAR_MIN, YEAR_MAX],
-                            allowCross=False,
-                            marks=_year_marks(slider_min, slider_max),
-                            tooltip={"placement": "bottom", "always_visible": False},
-                        ),
-                    ]
-                ),
-                html.Div(
-                    children=[
-                        html.Label("Popularity Scope", style={"color": ACCENT_SOFT, "fontWeight": "700", "marginBottom": "6px", "display": "block"}),
-                        dcc.RadioItems(
-                            id="popularity-radio",
-                            className="control-radio",
-                            options=[
-                                {"label": "All", "value": "All"},
-                                {"label": "High Popularity", "value": "High"},
-                                {"label": "Low Popularity", "value": "Low"},
-                            ],
-                            value="All",
-                            inline=True,
-                        ),
-                    ]
-                ),
-                html.Div(
-                    children=[
-                        html.Label("Search", style={"color": ACCENT_SOFT, "fontWeight": "700", "marginBottom": "6px", "display": "block"}),
-                        dcc.Input(
-                            id="track-search",
-                            type="text",
-                            placeholder="Track or artist",
-                            debounce=True,
-                            style={
-                                "width": "100%",
-                                "background": INPUT_BG,
-                                "border": "1px solid rgba(56, 189, 248, 0.22)",
-                                "borderRadius": "10px",
-                                "padding": "10px 12px",
-                                "color": TEXT_COLOR,
-                                "fontWeight": "600",
-                            },
-                        ),
-                    ]
-                ),
-            ],
-        ),
-        html.Div(
-            style={"display": "flex", "justifyContent": "flex-end", "gap": "12px", "marginBottom": "16px"},
-            children=[
-                html.A(
-                    html.Button(
-                        "Search in 5A_Search",
-                        id="search-5a-btn",
-                        style={
-                            "background": "linear-gradient(135deg, #F97316 0%, #FB923C 100%)",
-                            "color": "#fff",
-                            "border": "none",
-                            "fontWeight": "800",
-                            "padding": "10px 14px",
-                            "borderRadius": "10px",
-                            "cursor": "pointer",
-                        },
-                    ),
-                    id="search-5a-link",
-                    href="http://127.0.0.1:5173",
-                    target="_blank",
-                    style={"textDecoration": "none"},
-                ),
-                html.Button(
-                    "Download Filtered CSV",
-                    id="download-btn",
-                    n_clicks=0,
+                    id="control-grid",
                     style={
-                        "background": "linear-gradient(135deg, #14B8A6 0%, #0EA5E9 100%)",
-                        "color": "#001E2B",
-                        "border": "none",
-                        "fontWeight": "800",
-                        "padding": "10px 14px",
-                        "borderRadius": "10px",
-                        "cursor": "pointer",
+                        **PANEL_STYLE,
+                        "display": "grid",
+                        "gridTemplateColumns": "repeat(auto-fit, minmax(260px, 1fr))",
+                        "gap": "16px",
+                        "marginBottom": "16px",
+                    },
+                    children=[
+                        html.Div(
+                            children=[
+                                html.Label("Genre", style={"color": TEXT_COLOR, "fontWeight": "700", "marginBottom": "6px", "display": "block"}),
+                                dcc.Dropdown(
+                                    id="genre-dropdown",
+                                    className="control-dropdown",
+                                    options=[{"label": "All", "value": "All"}] + [{"label": g, "value": g} for g in ALL_GENRES],
+                                    value="All",
+                                    clearable=False,
+                                    maxHeight=180,
+                                    style={"color": TEXT_COLOR, "fontWeight": "600", "backgroundColor": INPUT_BG},
+                                ),
+                            ]
+                        ),
+                        html.Div(
+                            children=[
+                                html.Label("Year Range", style={"color": TEXT_COLOR, "fontWeight": "700", "marginBottom": "6px", "display": "block"}),
+                                dcc.RangeSlider(
+                                    id="year-slider",
+                                    min=slider_min,
+                                    max=slider_max,
+                                    value=[YEAR_MIN, YEAR_MAX],
+                                    allowCross=False,
+                                    marks=_year_marks(slider_min, slider_max),
+                                    tooltip={"placement": "bottom", "always_visible": False},
+                                ),
+                            ]
+                        ),
+                        html.Div(
+                            children=[
+                                html.Label("Popularity Scope", style={"color": TEXT_COLOR, "fontWeight": "700", "marginBottom": "6px", "display": "block"}),
+                                dcc.RadioItems(
+                                    id="popularity-radio",
+                                    className="control-radio",
+                                    options=[
+                                        {"label": "All", "value": "All"},
+                                        {"label": "High", "value": "High"},
+                                        {"label": "Medium", "value": "Medium"},
+                                        {"label": "Low", "value": "Low"},
+                                    ],
+                                    value="All",
+                                    inline=True,
+                                ),
+                            ]
+                        ),
+                        html.Div(
+                            children=[
+                                html.Label("Track or Artist", style={"color": TEXT_COLOR, "fontWeight": "700", "marginBottom": "6px", "display": "block"}),
+                                dcc.Input(
+                                    id="track-search",
+                                    type="text",
+                                    placeholder="Search",
+                                    debounce=True,
+                                    style={
+                                        "width": "100%",
+                                        "background": INPUT_BG,
+                                        "border": f"1px solid {TEXT_COLOR}",
+                                        "padding": "13px 12px",
+                                        "color": TEXT_COLOR,
+                                        "fontWeight": "600",
+                                    },
+                                ),
+                            ]
+                        ),
+                    ],
+                ),
+                html.Div(
+                    style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "gap": "12px", "marginBottom": "16px", "flexWrap": "wrap"},
+                    children=[
+                        html.Div(
+                            f"{len(DATA):,} cleaned tracks | {len(ALL_GENRES)} genres | {YEAR_MIN}-{YEAR_MAX}",
+                            style={"color": MUTED_TEXT, "fontSize": "13px"},
+                        ),
+                        html.Div(
+                            style={"display": "flex", "gap": "10px", "flexWrap": "wrap"},
+                            children=[
+                                html.A("Open 5*A Search", href="http://127.0.0.1:5173", target="_blank", style=SECONDARY_BUTTON_STYLE),
+                                html.Button("Download Filtered CSV", id="download-btn", n_clicks=0, style=BUTTON_STYLE),
+                            ],
+                        ),
+                        dcc.Download(id="download-data"),
+                    ],
+                ),
+                html.Div(
+                    style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(180px, 1fr))", "gap": "12px", "marginBottom": "14px"},
+                    children=[
+                        _kpi_card("Tracks in View", "kpi-tracks"),
+                        _kpi_card("Average Popularity", "kpi-pop"),
+                        _kpi_card("Top Genre", "kpi-genre"),
+                        _kpi_card("Top Artist", "kpi-artist"),
+                        _kpi_card("Year Span", "kpi-years"),
+                    ],
+                ),
+                html.Div(
+                    id="insight-line",
+                    style={
+                        **PANEL_STYLE,
+                        "marginBottom": "18px",
+                        "lineHeight": "1.6",
+                        "color": TEXT_COLOR,
+                        "whiteSpace": "normal",
+                        "wordWrap": "break-word",
+                        "minHeight": "56px",
+                        "fontSize": "15px",
                     },
                 ),
-                dcc.Download(id="download-data"),
-            ],
-        ),
-        html.Div(
-            style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(180px, 1fr))", "gap": "12px", "marginBottom": "14px"},
-            children=[
-                html.Div([html.Div("Tracks in View", style={"color": MUTED_TEXT}), html.Div(id="kpi-tracks", style={"fontSize": "28px", "fontWeight": "800", "color": ACCENT_PRIMARY})], style={"background": CARD_COLOR, "border": "1px solid rgba(56, 189, 248, 0.22)", "borderRadius": "16px", "padding": "12px", "backdropFilter": "blur(8px)"}),
-                html.Div([html.Div("Average Popularity", style={"color": MUTED_TEXT}), html.Div(id="kpi-pop", style={"fontSize": "28px", "fontWeight": "800", "color": ACCENT_PRIMARY})], style={"background": CARD_COLOR, "border": "1px solid rgba(56, 189, 248, 0.22)", "borderRadius": "16px", "padding": "12px", "backdropFilter": "blur(8px)"}),
-                html.Div([html.Div("Top Genre", style={"color": MUTED_TEXT}), html.Div(id="kpi-genre", style={"fontSize": "28px", "fontWeight": "800", "color": ACCENT_PRIMARY})], style={"background": CARD_COLOR, "border": "1px solid rgba(56, 189, 248, 0.22)", "borderRadius": "16px", "padding": "12px", "backdropFilter": "blur(8px)"}),
-                html.Div([html.Div("Top Artist", style={"color": MUTED_TEXT}), html.Div(id="kpi-artist", style={"fontSize": "28px", "fontWeight": "800", "color": ACCENT_PRIMARY})], style={"background": CARD_COLOR, "border": "1px solid rgba(56, 189, 248, 0.22)", "borderRadius": "16px", "padding": "12px", "backdropFilter": "blur(8px)"}),
-                html.Div([html.Div("Year Span", style={"color": MUTED_TEXT}), html.Div(id="kpi-years", style={"fontSize": "28px", "fontWeight": "800", "color": ACCENT_PRIMARY})], style={"background": CARD_COLOR, "border": "1px solid rgba(56, 189, 248, 0.22)", "borderRadius": "16px", "padding": "12px", "backdropFilter": "blur(8px)"}),
-            ],
-        ),
-        html.Div(id="insight-line", style={"marginBottom": "18px", "padding": "14px", "background": CARD_COLOR, "border": "1px solid rgba(56, 189, 248, 0.22)", "borderRadius": "16px", "lineHeight": "1.65", "color": TEXT_COLOR, "backdropFilter": "blur(8px)", "whiteSpace": "normal", "wordWrap": "break-word", "minHeight": "56px", "fontSize": "15px"}),
-        html.H3("Comparison View", style={"color": ACCENT_SECONDARY, "fontWeight": "800", "marginBottom": "8px"}),
-        html.Div(
-            style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(330px, 1fr))", "gap": "14px", "marginBottom": "16px"},
-            children=[
-                _card("chart-1", chart_1_top5_genres(DATA)),
-                _card("chart-2", chart_2_bottom5_genres(DATA)),
-                _card("chart-3", chart_3_clustered_column(DATA)),
-                _card("chart-4", chart_4_clustered_bar(DATA)),
-                _card("chart-5", chart_5_stacked_column(DATA)),
-                _card("chart-6", chart_6_stacked_bar(DATA)),
-            ],
-        ),
-        html.H3("Relationship View", style={"color": ACCENT_SECONDARY, "fontWeight": "800", "marginBottom": "8px"}),
-        html.Div(
-            style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(380px, 1fr))", "gap": "14px", "marginBottom": "16px"},
-            children=[
-                _card("chart-7", chart_7_scatter(DATA)),
-                _card("chart-8", chart_8_bubble(DATA)),
-            ],
-        ),
-        html.H3("Distribution View", style={"color": ACCENT_SECONDARY, "fontWeight": "800", "marginBottom": "8px"}),
-        html.Div(
-            style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(330px, 1fr))", "gap": "14px", "marginBottom": "16px"},
-            children=[
-                _card("chart-9", chart_9_histogram(DATA)),
-                _card("chart-10", chart_10_box(DATA)),
-                _card("chart-11", chart_11_violin(DATA)),
-            ],
-        ),
-        html.H3("Time Series View", style={"color": ACCENT_SECONDARY, "fontWeight": "800", "marginBottom": "8px"}),
-        html.Div(
-            style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(380px, 1fr))", "gap": "14px", "marginBottom": "16px"},
-            children=[
-                _card("chart-12", chart_12_line(DATA)),
-                _card("chart-13", chart_13_area(DATA)),
-            ],
-        ),
-        html.H3("Feature Correlation", style={"color": ACCENT_SECONDARY, "fontWeight": "800", "marginBottom": "8px"}),
-        html.Div(
-            style={"display": "grid", "gridTemplateColumns": "1fr", "gap": "14px", "marginBottom": "16px"},
-            children=[
-                _card("chart-14", chart_14_heatmap(DATA)),
-            ],
-        ),
-        html.H3("Top Tracks Snapshot", style={"color": ACCENT_SECONDARY, "fontWeight": "800", "marginBottom": "8px"}),
-        html.Div(
-            style={"background": CARD_COLOR, "border": "1px solid rgba(56, 189, 248, 0.22)", "borderRadius": "16px", "padding": "10px", "backdropFilter": "blur(8px)"},
-            children=[
-                dash_table.DataTable(
-                    id="top-tracks-table",
-                    columns=[
-                        {"name": "Track", "id": "track_name"},
-                        {"name": "Artist", "id": "artists"},
-                        {"name": "Genre", "id": "track_genre"},
-                        {"name": "Year", "id": "Year"},
-                        {"name": "Popularity", "id": "popularity"},
-                        {"name": "Danceability", "id": "danceability"},
-                        {"name": "Energy", "id": "energy"},
+                _assistant_card(),
+                html.H3("Comparison", style=SECTION_TITLE_STYLE),
+                html.Div(
+                    style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(330px, 1fr))", "gap": "14px", "marginBottom": "16px"},
+                    children=[
+                        _card("chart-1", chart_1_top5_genres(DATA)),
+                        _card("chart-2", chart_2_bottom5_genres(DATA)),
+                        _card("chart-3", chart_3_clustered_column(DATA)),
+                        _card("chart-4", chart_4_clustered_bar(DATA)),
+                        _card("chart-5", chart_5_stacked_column(DATA)),
+                        _card("chart-6", chart_6_stacked_bar(DATA)),
                     ],
-                    data=_top_tracks(DATA),
-                    page_size=12,
-                    sort_action="native",
-                    style_as_list_view=True,
-                    style_table={"overflowX": "auto", "borderRadius": "12px"},
-                    style_header={"backgroundColor": "#0B1326", "color": ACCENT_SOFT, "fontWeight": "700", "border": "none"},
-                    style_cell={"backgroundColor": "rgba(11, 19, 38, 0.95)", "color": TEXT_COLOR, "border": "none", "fontSize": "13px", "padding": "10px", "maxWidth": "220px", "whiteSpace": "normal"},
-                    style_data_conditional=[
-                        {"if": {"row_index": "odd"}, "backgroundColor": "rgba(15, 23, 42, 0.85)"}
+                ),
+                html.H3("Relationship", style=SECTION_TITLE_STYLE),
+                html.Div(
+                    style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(380px, 1fr))", "gap": "14px", "marginBottom": "16px"},
+                    children=[
+                        _card("chart-7", chart_7_scatter(DATA)),
+                        _card("chart-8", chart_8_bubble(DATA)),
                     ],
-                )
+                ),
+                html.H3("Distribution", style=SECTION_TITLE_STYLE),
+                html.Div(
+                    style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(330px, 1fr))", "gap": "14px", "marginBottom": "16px"},
+                    children=[
+                        _card("chart-9", chart_9_histogram(DATA)),
+                        _card("chart-10", chart_10_box(DATA)),
+                        _card("chart-11", chart_11_violin(DATA)),
+                    ],
+                ),
+                html.H3("Time Series", style=SECTION_TITLE_STYLE),
+                html.Div(
+                    style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(380px, 1fr))", "gap": "14px", "marginBottom": "16px"},
+                    children=[
+                        _card("chart-12", chart_12_line(DATA)),
+                        _card("chart-13", chart_13_area(DATA)),
+                    ],
+                ),
+                html.H3("Feature Correlation", style=SECTION_TITLE_STYLE),
+                html.Div(
+                    style={"display": "grid", "gridTemplateColumns": "1fr", "gap": "14px", "marginBottom": "16px"},
+                    children=[_card("chart-14", chart_14_heatmap(DATA))],
+                ),
+                html.H3("Top Tracks Snapshot", style=SECTION_TITLE_STYLE),
+                html.Div(
+                    style={**PANEL_STYLE, "padding": "10px"},
+                    children=[
+                        dash_table.DataTable(
+                            id="top-tracks-table",
+                            columns=[
+                                {"name": "Track", "id": "track_name"},
+                                {"name": "Artist", "id": "artists"},
+                                {"name": "Genre", "id": "track_genre"},
+                                {"name": "Year", "id": "Year"},
+                                {"name": "Popularity", "id": "popularity"},
+                                {"name": "Danceability", "id": "danceability"},
+                                {"name": "Energy", "id": "energy"},
+                            ],
+                            data=_top_tracks(DATA),
+                            page_size=12,
+                            sort_action="native",
+                            style_as_list_view=True,
+                            style_table={"overflowX": "auto"},
+                            style_header={"backgroundColor": "#111111", "color": "#FFFFFF", "fontWeight": "700", "border": "none"},
+                            style_cell={
+                                "backgroundColor": CARD_COLOR,
+                                "color": TEXT_COLOR,
+                                "border": f"1px solid {BORDER_COLOR}",
+                                "fontSize": "13px",
+                                "padding": "10px",
+                                "maxWidth": "220px",
+                                "whiteSpace": "normal",
+                                "fontFamily": "Inter, Segoe UI, sans-serif",
+                            },
+                            style_data_conditional=[{"if": {"row_index": "odd"}, "backgroundColor": ROW_ALT}],
+                        )
+                    ],
+                ),
             ],
-        ),
+        )
     ],
 )
 
@@ -862,6 +1085,8 @@ app.layout = html.Div(
     Output("kpi-artist", "children"),
     Output("kpi-years", "children"),
     Output("insight-line", "children"),
+    Output("assistant-prompt", "children"),
+    Output("assistant-open-link", "href"),
     Output("chart-1", "figure"),
     Output("chart-2", "figure"),
     Output("chart-3", "figure"),
@@ -886,6 +1111,7 @@ def update_dashboard(genre: str, year_range: list[int], scope: str, search_text:
     # Single callback keeps all major visuals synchronized with shared filters.
     view = _filtered_view(DATA, genre, year_range, scope, search_text)
     tracks, avg_pop, top_genre, top_artist, years, insight = _kpis(view)
+    assistant_prompt, assistant_href = _assistant_prompt(view, genre, year_range, scope, search_text)
     return (
         tracks,
         avg_pop,
@@ -893,6 +1119,8 @@ def update_dashboard(genre: str, year_range: list[int], scope: str, search_text:
         top_artist,
         years,
         insight,
+        assistant_prompt,
+        assistant_href,
         chart_1_top5_genres(view),
         chart_2_bottom5_genres(view),
         chart_3_clustered_column(view),
@@ -909,21 +1137,6 @@ def update_dashboard(genre: str, year_range: list[int], scope: str, search_text:
         chart_14_heatmap(view),
         _top_tracks(view),
     )
-
-
-@app.callback(
-    Output("search-5a-link", "href"),
-    Input("genre-dropdown", "value"),
-    prevent_initial_call=False,
-)
-def update_search_link(genre: str):
-    # Generate 5A_Search link with artist from selected genre.
-    base_url = "http://127.0.0.1:5173"
-    if genre and genre != "All":
-        top_artist = DATA[DATA["track_genre"] == genre]["artists"].value_counts().index[0] if not DATA[DATA["track_genre"] == genre].empty else ""
-        if top_artist:
-            return f"{base_url}?search={top_artist}"
-    return base_url
 
 
 @app.callback(
