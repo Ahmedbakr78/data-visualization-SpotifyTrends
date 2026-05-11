@@ -516,6 +516,7 @@ def chart_9_histogram(df: pd.DataFrame):
         annotation_text=f"Median {median_tempo:.1f}",
         annotation_position="top right",
     )
+    fig.update_yaxes(title_text="Tracks Count")
     return _style(fig, "9) Histogram: Tempo Distribution")
 
 
@@ -604,6 +605,8 @@ def chart_14_heatmap(df: pd.DataFrame):
         labels={"color": "Correlation"},
     )
     fig.update_layout(coloraxis_colorbar={"title": "Corr"})
+    fig.update_xaxes(title_text="Audio Feature")
+    fig.update_yaxes(title_text="Audio Feature")
     return _style(fig, "14) Heatmap: Audio Feature Correlation")
 
 
