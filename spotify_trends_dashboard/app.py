@@ -1,10 +1,8 @@
 from __future__ import annotations
-
 import argparse
 import os
 from pathlib import Path
 from urllib.parse import quote_plus
-
 import pandas as pd
 import plotly.express as px
 from dash import Dash, Input, Output, State, dash_table, dcc, html, no_update
@@ -15,9 +13,6 @@ DATA_CANDIDATES = [
     ROOT_DIR / "dataset_5a" / "spotify_cleaned.csv",
 ]
 
-ACCENT_PRIMARY = "#111111"
-ACCENT_SECONDARY = "#3A3A3A"
-ACCENT_SOFT = "#6A6A6A"
 BG_COLOR = "#F7F6F2"
 CARD_COLOR = "#FFFFFF"
 INPUT_BG = "#FFFFFF"
@@ -66,6 +61,24 @@ SECTION_TITLE_STYLE = {
     "letterSpacing": "0",
     "margin": "20px 0 10px",
     "textTransform": "uppercase",
+}
+COMPARISON_GRID_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(auto-fit, minmax(min(100%, 330px), 1fr))",
+    "gap": "14px",
+    "marginBottom": "16px",
+}
+WIDE_CHART_GRID_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(auto-fit, minmax(min(100%, 380px), 1fr))",
+    "gap": "14px",
+    "marginBottom": "16px",
+}
+SINGLE_CHART_GRID_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0, 1fr)",
+    "gap": "14px",
+    "marginBottom": "16px",
 }
 
 CATEGORY_ORDER = ["Low", "Medium", "High"]
@@ -120,7 +133,7 @@ def _load_data() -> pd.DataFrame:
         df["Year"] = pd.to_datetime(df["release_date"], errors="coerce").dt.year
 
     if "Year" not in df.columns:
-        df["Year"] = 2000 + (pd.RangeIndex(len(df)) % 25)
+        raise ValueError("Cleaned Spotify data must include a real Year column. Run the preprocessing notebook first.")
 
     if "Popularity_Category" not in df.columns and "popularity" in df.columns:
         df["Popularity_Category"] = pd.cut(
@@ -873,7 +886,7 @@ app.layout = html.Div(
                             },
                         ),
                         html.Div(
-                            "Popularity, audio features, genre behavior, and release-year movement across 113k cleaned Spotify tracks.",
+                            f"Popularity, audio features, genre behavior, and release-year movement across {len(DATA):,} cleaned Spotify tracks.",
                             style={"color": MUTED_TEXT, "fontSize": "15px", "marginTop": "12px", "maxWidth": "760px"},
                         ),
                     ],
@@ -997,7 +1010,7 @@ app.layout = html.Div(
                 _assistant_card(),
                 html.H3("Comparison", style=SECTION_TITLE_STYLE),
                 html.Div(
-                    style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(330px, 1fr))", "gap": "14px", "marginBottom": "16px"},
+                    style=COMPARISON_GRID_STYLE,
                     children=[
                         _card("chart-1", chart_1_top5_genres(DATA)),
                         _card("chart-2", chart_2_bottom5_genres(DATA)),
@@ -1009,7 +1022,7 @@ app.layout = html.Div(
                 ),
                 html.H3("Relationship", style=SECTION_TITLE_STYLE),
                 html.Div(
-                    style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(380px, 1fr))", "gap": "14px", "marginBottom": "16px"},
+                    style=WIDE_CHART_GRID_STYLE,
                     children=[
                         _card("chart-7", chart_7_scatter(DATA)),
                         _card("chart-8", chart_8_bubble(DATA)),
@@ -1017,7 +1030,7 @@ app.layout = html.Div(
                 ),
                 html.H3("Distribution", style=SECTION_TITLE_STYLE),
                 html.Div(
-                    style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(330px, 1fr))", "gap": "14px", "marginBottom": "16px"},
+                    style=COMPARISON_GRID_STYLE,
                     children=[
                         _card("chart-9", chart_9_histogram(DATA)),
                         _card("chart-10", chart_10_box(DATA)),
@@ -1026,7 +1039,7 @@ app.layout = html.Div(
                 ),
                 html.H3("Time Series", style=SECTION_TITLE_STYLE),
                 html.Div(
-                    style={"display": "grid", "gridTemplateColumns": "repeat(auto-fit, minmax(380px, 1fr))", "gap": "14px", "marginBottom": "16px"},
+                    style=WIDE_CHART_GRID_STYLE,
                     children=[
                         _card("chart-12", chart_12_line(DATA)),
                         _card("chart-13", chart_13_area(DATA)),
@@ -1034,7 +1047,7 @@ app.layout = html.Div(
                 ),
                 html.H3("Feature Correlation", style=SECTION_TITLE_STYLE),
                 html.Div(
-                    style={"display": "grid", "gridTemplateColumns": "1fr", "gap": "14px", "marginBottom": "16px"},
+                    style=SINGLE_CHART_GRID_STYLE,
                     children=[_card("chart-14", chart_14_heatmap(DATA))],
                 ),
                 html.H3("Top Tracks Snapshot", style=SECTION_TITLE_STYLE),
